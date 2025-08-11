@@ -1,4 +1,5 @@
-# Render Blueprint: web admin + cron worker (runs every 10 minutes)
+# Render Blueprint: FREE web app only.
+# Worker is triggered by an HTTP endpoint (/run-worker?token=...) every 10 minutes via EasyCron or GitHub Actions.
 services:
   - type: web
     name: marketplace-ai-web
@@ -11,16 +12,6 @@ services:
       - key: PYTHON_VERSION
         value: 3.11
       - key: PUBLIC_BASE_URL
-        value: ""  # Set this to the Render URL after the first deploy
-
-  - type: cron
-    name: marketplace-ai-cron
-    env: python
-    rootDir: backend
-    plan: free
-    schedule: "*/10 * * * *"  # every 10 minutes
-    buildCommand: pip install -r requirements.txt
-    startCommand: python worker.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11
+        value: ""   # set to your Render URL after first deploy
+      - key: TRIGGER_SECRET
+        value: ""   # choose a long random string; required for /run-worker
