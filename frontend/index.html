@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DealAI — Marketplace Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <header class="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-indigo-600 grid place-content-center text-white font-bold">AI</div>
+        <div class="font-semibold tracking-tight">DealAI</div>
+      </div>
+      <nav class="flex items-center gap-2 text-sm">
+        <button data-tab="passed" class="tab-btn px-3 py-1.5 rounded-full bg-indigo-600 text-white">Passed</button>
+        <button data-tab="all" class="tab-btn px-3 py-1.5 rounded-full hover:bg-slate-100">All</button>
+        <button data-tab="profiles" class="tab-btn px-3 py-1.5 rounded-full hover:bg-slate-100">Profiles</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-12 gap-6">
+    <aside class="col-span-12 lg:col-span-3 space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+          <h2 class="font-semibold">Saved Searches</h2>
+          <button id="refresh-profiles" class="text-sm text-indigo-600 hover:underline">Refresh</button>
+        </div>
+        <div id="profile-list" class="p-2 max-h-[60vh] overflow-auto"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+        <h3 class="font-semibold mb-2">Filters</h3>
+        <div class="space-y-3">
+          <div>
+            <label class="text-sm text-slate-500">Search</label>
+            <input id="q" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="title contains..." />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-slate-500">Min £</label>
+              <input id="minp" type="number" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="0" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">Max £</label>
+              <input id="maxp" type="number" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="9999" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-slate-500">Min score</label>
+              <input id="minscore" type="number" step="0.1" min="0" max="1" value="0.6" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-500">Security ≥</label>
+              <input id="secmin" type="number" min="0" max="100" value="70" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" />
+            </div>
+          </div>
+          <button id="apply" class="w-full mt-1 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 text-white py-2.5 hover:bg-indigo-700">
+            Apply filters
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="col-span-12 lg:col-span-6 space-y-4" id="listings-wrap">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Results</h2>
+        <div class="text-sm text-slate-500"><span id="count">0</span> items</div>
+      </div>
+      <div id="listings" class="space-y-3"></div>
+    </section>
+
+    <aside class="col-span-12 lg:col-span-3">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 sticky top-20">
+        <div class="p-4 border-b border-slate-100">
+          <h2 class="font-semibold">Details</h2>
+          <p class="text-sm text-slate-500">Select a result to preview.</p>
+        </div>
+        <div id="detail" class="p-4 space-y-3"></div>
+      </div>
+    </aside>
+  </main>
+
+<script>
+const state = { tab:'passed', profile:null, listings:[], profiles:[], selected:null };
+
+function pounds(c){ return (c/100).toFixed(2); }
+function banner(score){
+  if(score >= 96) return ['Safe','bg-green-500 text-white'];
+  if(score >= 86) return ['Low risk','bg-yellow-400 text-black'];
+  if(score >= 70) return ['Scam alert','bg-red-500 text-white'];
+  return null;
+}
+function badge(text, color='indigo'){
+  return `<span class="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-${color}-50 text-${color}-700 border border-${color}-200">${text}</span>`;
+}
+function profilePill(p){
+  const active = state.profile === p.name;
+  return `<button data-prof="${p.name}" class="w-full text-left px-3 py-2 rounded-xl ${active?'bg-indigo-50 border-indigo-200 text-indigo-700':'hover:bg-slate-50'} border border-slate-200 mb-2">
+    <div class="font-medium truncate">${p.name}</div>
+    <div class="text-xs text-slate-500 truncate">${p.keywords || ''}</div>
+  </button>`;
+}
+function listingCard(it){
+  const b = banner(parseInt(it.security_score||0));
+  const flag = b ? `<div class="absolute top-0 right-0 ${b[1]} text-xs font-semibold px-2 py-1 rounded-bl-lg">${b[0]}</div>` : '';
+  return `<div class="relative rounded-2xl border border-slate-200 bg-white shadow-sm p-4 hover:border-indigo-200 transition" data-url="${it.url}">
+    ${flag}
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <h3 class="font-semibold truncate">${it.title}</h3>
+          ${badge('score ' + Number(it.score||0).toFixed(2))}
+          ${badge('sec ' + (it.security_score ?? 0) + '/100','slate')}
+        </div>
+        <div class="mt-1 text-sm text-slate-600 flex flex-wrap items-center gap-3">
+          <span>£${pounds(it.price_cents || 0)}</span>
+          <span class="text-slate-400">•</span>
+          <span class="truncate">${it.profile || '—'}</span>
+          <span class="text-slate-400">•</span>
+          <span class="truncate">${(it.created_at || '').replace('T',' ').replace('Z','')}</span>
+        </div>
+        <div class="mt-2 text-sm text-slate-500 line-clamp-2">${it.ai_reasons || it.reason || ''}</div>
+      </div>
+      <div class="shrink-0 flex flex-col items-end gap-2">
+        <a target="_blank" rel="noopener" href="${it.url}" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm">Open on Facebook</a>
+        <a target="_blank" rel="noopener" href="/item/${it.id || ''}" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm hover:bg-indigo-700">View details</a>
+      </div>
+    </div>
+  </div>`;
+}
+function detailPanel(it){
+  if(!it) return '<p class="text-sm text-slate-500">Select a result to preview.</p>';
+  const b = banner(parseInt(it.security_score||0));
+  const flag = b ? `<div class="${b[1]} text-xs font-semibold px-2 py-1 rounded-lg inline-block">${b[0]} — ${it.security_score}/100</div>` : '';
+  return `<div class="space-y-3">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="font-semibold">${it.title}</div>
+        <div class="text-sm text-slate-600 mt-0.5">£${pounds(it.price_cents||0)}</div>
+      </div>
+      <div class="flex items-center gap-2">${badge('score ' + Number(it.score||0).toFixed(2))}</div>
+    </div>
+    <div>${flag}</div>
+    <div class="text-sm text-slate-500">${it.ai_reasons || it.reason || 'No notes'}</div>
+    <div class="flex items-center gap-2 pt-2">
+      <a target="_blank" rel="noopener" href="${it.url}" class="px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-sm w-full text-center">Open on Facebook</a>
+    </div>
+  </div>`;
+}
+
+async function fetchProfiles(){
+  const r = await fetch('/api/profiles'); state.profiles = await r.json();
+  const wrap = document.getElementById('profile-list');
+  wrap.innerHTML = state.profiles.map(profilePill).join('') || '<div class="p-3 text-sm text-slate-500">No profiles yet.</div>';
+  wrap.querySelectorAll('button[data-prof]').forEach(btn => {
+    btn.addEventListener('click', () => { state.profile = btn.getAttribute('data-prof'); loadListings(); });
+  });
+}
+
+async function loadListings(){
+  const base = new URL('/api/listings', window.location.origin);
+  const minscore = state.tab === 'passed' ? (parseFloat(document.getElementById('minscore').value || '0.6')) : (parseFloat(document.getElementById('minscore').value || '0'));
+  const secmin = parseInt(document.getElementById('secmin').value || '70', 10);
+  if(state.profile) base.searchParams.set('profile', state.profile);
+  base.searchParams.set('min_score', isNaN(minscore)?0:minscore);
+  if(state.tab === 'passed') base.searchParams.set('status','accepted');
+  base.searchParams.set('security_min', isNaN(secmin)?70:secmin);
+  const r = await fetch(base); 
+  let data = await r.json();
+
+  // client-side text & price filter
+  const q = (document.getElementById('q').value || '').toLowerCase();
+  const minp = parseFloat(document.getElementById('minp').value || '0');
+  const maxp = parseFloat(document.getElementById('maxp').value || '999999');
+  if(q) data = data.filter(it => String(it.title||'').toLowerCase().includes(q));
+  data = data.filter(it => (it.price_cents||0) >= Math.round(minp*100) && (it.price_cents||0) <= Math.round(maxp*100));
+
+  state.listings = data;
+  const list = document.getElementById('listings');
+  list.innerHTML = data.map(listingCard).join('');
+  document.getElementById('count').textContent = data.length;
+
+  list.querySelectorAll('[data-url]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('a,button')) return;
+      const url = card.getAttribute('data-url');
+      const found = state.listings.find(x => x.url === url);
+      state.selected = found;
+      document.getElementById('detail').innerHTML = detailPanel(found);
+      list.querySelectorAll('[data-url]').forEach(c => c.classList.remove('ring-2','ring-indigo-200','border-indigo-300'));
+      card.classList.add('ring-2','ring-indigo-200','border-indigo-300');
+    });
+  });
+  document.getElementById('detail').innerHTML = detailPanel(state.listings[0] || null);
+}
+
+function setTab(tab){
+  state.tab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const on = b.dataset.tab === tab;
+    b.className = 'tab-btn px-3 py-1.5 rounded-full ' + (on ? 'bg-indigo-600 text-white' : 'hover:bg-slate-100');
+  });
+  loadListings();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+  document.getElementById('apply').addEventListener('click', loadListings);
+  document.getElementById('refresh-profiles').addEventListener('click', fetchProfiles);
+  fetchProfiles();
+  loadListings();
+});
+</script>
+</body>
+</html>
