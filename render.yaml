@@ -4,22 +4,19 @@ services:
     name: marketplace-ai-web
     env: python
     rootDir: backend
-    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11
       - key: PUBLIC_BASE_URL
-        # Set this to the Render URL after the first deploy (e.g., https://marketplace-ai-web.onrender.com)
-        value: ""
+        value: "" # Set this to the Render URL after first deploy
 
   - type: cron
     name: marketplace-ai-cron
     env: python
     rootDir: backend
-    plan: free
-    schedule: "*/10 * * * *"  # every 10 minutes
+    schedule: "*/10 * * * *" # every 10 minutes
     buildCommand: pip install -r requirements.txt
     startCommand: python worker.py
     envVars:
