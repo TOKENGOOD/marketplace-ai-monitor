@@ -31,6 +31,8 @@ def init_db():
         chat_id TEXT
     );
     """)
+    _safe_alter(c, "ALTER TABLE profiles ADD COLUMN location TEXT")
+    _safe_alter(c, "ALTER TABLE profiles ADD COLUMN radius INTEGER")
 
     # ---- Listings table + new columns ----
     c.execute("""
@@ -60,6 +62,10 @@ def list_profiles():
     c = conn.cursor()
     c.execute("SELECT * FROM profiles ORDER BY id DESC")
     rows = [dict(r) for r in c.fetchall()]
+    print("--- PROFILES ---")
+    import json
+    print(json.dumps(rows, indent=2))
+    print("----------------")
     conn.close()
     return rows
 
@@ -75,15 +81,17 @@ def create_profile(data: dict):
     conn = get_conn()
     c = conn.cursor()
     c.execute(
-        """INSERT INTO profiles (name, keywords, price_min_cents, price_max_cents, min_score, chat_id)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO profiles (name, keywords, price_min_cents, price_max_cents, min_score, chat_id, location, radius)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             data.get('name'),
             data.get('keywords', ''),
             data.get('price_min_cents'),
             data.get('price_max_cents'),
             data.get('min_score', 0.6),
-            data.get('chat_id')
+            data.get('chat_id'),
+            data.get('location'),
+            data.get('radius')
         )
     )
     conn.commit()
@@ -96,7 +104,7 @@ def update_profile(pid: int, data: dict):
     c = conn.cursor()
     c.execute(
         """UPDATE profiles
-               SET name=?, keywords=?, price_min_cents=?, price_max_cents=?, min_score=?, chat_id=?
+               SET name=?, keywords=?, price_min_cents=?, price_max_cents=?, min_score=?, chat_id=?, location=?, radius=?
                WHERE id = ?""",
         (
             data.get('name'),
@@ -105,6 +113,8 @@ def update_profile(pid: int, data: dict):
             data.get('price_max_cents'),
             data.get('min_score', 0.6),
             data.get('chat_id'),
+            data.get('location'),
+            data.get('radius'),
             pid
         )
     )

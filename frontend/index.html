@@ -103,6 +103,26 @@
           <input id="new-profile-keywords" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="iphone, 15, pro, max, unlocked" />
           <p class="text-xs text-slate-400 mt-1.5">Comma-separated keywords to match in listing titles.</p>
         </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-slate-600 font-medium">Min Price (£)</label>
+              <input id="new-profile-min-price" type="number" step="any" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="0" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600 font-medium">Max Price (£)</label>
+              <input id="new-profile-max-price" type="number" step="any" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="9999" />
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm text-slate-600 font-medium">Location</label>
+              <input id="new-profile-location" type="text" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="e.g. London" />
+            </div>
+            <div>
+              <label class="text-sm text-slate-600 font-medium">Radius (km)</label>
+              <input id="new-profile-radius" type="number" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="50" />
+            </div>
+        </div>
       </div>
       <div class="p-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl flex items-center justify-end gap-3">
         <button id="cancel-profile-btn" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-sm">Cancel</button>
@@ -237,20 +257,37 @@ function setTab(tab){
 async function saveProfile(){
   const name = document.getElementById('new-profile-name').value;
   const keywords = document.getElementById('new-profile-keywords').value;
+  const minPrice = document.getElementById('new-profile-min-price').value;
+  const maxPrice = document.getElementById('new-profile-max-price').value;
+  const location = document.getElementById('new-profile-location').value;
+  const radius = document.getElementById('new-profile-radius').value;
+
   if(!name.trim()){
     alert('Profile name is required.');
     return;
   }
+  const body = {
+    name,
+    keywords,
+    price_min_cents: minPrice ? Math.round(parseFloat(minPrice) * 100) : null,
+    price_max_cents: maxPrice ? Math.round(parseFloat(maxPrice) * 100) : null,
+    location: location,
+    radius: radius ? parseInt(radius, 10) : null,
+  };
   const r = await fetch('/api/profiles', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ name, keywords })
+    body: JSON.stringify(body)
   });
   if(r.ok){
     await fetchProfiles();
     document.getElementById('profile-modal').classList.add('hidden');
     document.getElementById('new-profile-name').value = '';
     document.getElementById('new-profile-keywords').value = '';
+    document.getElementById('new-profile-min-price').value = '';
+    document.getElementById('new-profile-max-price').value = '';
+    document.getElementById('new-profile-location').value = '';
+    document.getElementById('new-profile-radius').value = '';
   } else {
     const err = await r.json();
     alert('Error saving profile: ' + (err.detail || 'Unknown error'));
