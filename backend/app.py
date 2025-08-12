@@ -3,6 +3,7 @@ from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import os
+import traceback
 from db import init_db, list_profiles, get_profile, create_profile, update_profile, delete_profile, list_listings, get_listing
 from job_runner import run_once
 
@@ -87,9 +88,13 @@ def proxy_places_autosuggest(request: Request):
     try:
         r = requests.get(url, params=params, headers=headers, timeout=5)
         if not r.ok:
+            print(f"--- HERE API FAILED: STATUS={r.status_code}, BODY={r.text}")
             raise HTTPException(r.status_code, r.text or "HERE API error")
         return r.json()
     except Exception as e:
+        print("--- PROXY EXCEPTION ---")
+        traceback.print_exc()
+        print("-----------------------")
         raise HTTPException(500, str(e))
 
 @app.get("/api/places/geocode")
@@ -106,9 +111,13 @@ def proxy_places_geocode(request: Request):
     try:
         r = requests.get(url, params=params, headers=headers, timeout=7)
         if not r.ok:
+            print(f"--- HERE API FAILED: STATUS={r.status_code}, BODY={r.text}")
             raise HTTPException(r.status_code, r.text or "HERE API error")
         return r.json()
     except Exception as e:
+        print("--- PROXY EXCEPTION ---")
+        traceback.print_exc()
+        print("-----------------------")
         raise HTTPException(500, str(e))
 
 @app.get("/api/places/lookup")
@@ -125,9 +134,13 @@ def proxy_places_lookup(request: Request):
     try:
         r = requests.get(url, params=params, headers=headers, timeout=5)
         if not r.ok:
+            print(f"--- HERE API FAILED: STATUS={r.status_code}, BODY={r.text}")
             raise HTTPException(r.status_code, r.text or "HERE API error")
         return r.json()
     except Exception as e:
+        print("--- PROXY EXCEPTION ---")
+        traceback.print_exc()
+        print("-----------------------")
         raise HTTPException(500, str(e))
 
 # Per-item page
