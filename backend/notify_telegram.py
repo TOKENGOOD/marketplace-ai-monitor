@@ -1,17 +1,14 @@
 import os, requests
 
-BOT = os.getenv("TELEGRAM_BOT_TOKEN")
-DEFAULT_CHAT = os.getenv("TELEGRAM_CHAT_ID")
-
-def send_item(item, profile):
+def send_item(item, profile, site_link=None, reason=None):
     """Send a Telegram message.
     Returns:
       True  -> sent successfully
       False -> API call attempted but failed
       None  -> not configured (missing token or chat)
     """
-    token = BOT
-    chat = profile.get("chat_id") or DEFAULT_CHAT
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat = profile.get("chat_id") or os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat:
         # Not configured
         return None
@@ -21,9 +18,13 @@ def send_item(item, profile):
         f"✅ [{profile.get('name')}] Match\n"
         f"{item.get('title')}\n"
         f"Price: £{price:.2f}\n"
-        f"Score: {item.get('score'):.2f} — {item.get('reason')}\n"
-        f"{item.get('url')}"
+        f"Score: {item.get('score'):.2f} — {reason or item.get('reason')}\n"
+        f"Original link: {item.get('url')}"
     )
+    # Add our site link if provided
+    if site_link:
+        text += f"\nView on our site: {site_link}"
+
     try:
         r = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json={
             "chat_id": chat,
