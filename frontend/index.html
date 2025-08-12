@@ -113,15 +113,14 @@
               <input id="new-profile-max-price" type="number" step="any" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="9999" />
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-sm text-slate-600 font-medium">Location</label>
-              <input id="new-profile-location" type="text" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="e.g. London" />
-            </div>
-            <div>
-              <label class="text-sm text-slate-600 font-medium">Radius (km)</label>
-              <input id="new-profile-radius" type="number" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="50" />
-            </div>
+        <div class="relative">
+          <label class="text-sm text-slate-600 font-medium">Location</label>
+          <input id="new-profile-location" type="text" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="Search places, addresses, or postcodes…" autocomplete="off" />
+          <ul id="location-suggestions" class="hidden absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border bg-white p-1 shadow-lg"></ul>
+        </div>
+        <div>
+          <label class="text-sm text-slate-600 font-medium">Radius (km)</label>
+          <input id="new-profile-radius" type="number" class="w-full mt-1 rounded-xl border-slate-200 focus:ring-2 focus:ring-indigo-500" placeholder="50" />
         </div>
       </div>
       <div class="p-4 bg-slate-50 border-t border-slate-200 rounded-b-2xl flex items-center justify-end gap-3">
@@ -294,6 +293,129 @@ async function saveProfile(){
   }
 }
 
+function debounce(fn, delay = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
+
+function setupLocationAutocomplete() {
+    const input = document.getElementById('new-profile-location');
+    const suggestionsList = document.getElementById('location-suggestions');
+    let activeIndex = -1;
+    let currentItems = [];
+
+    const onInputChange = async (e) => {
+        const q = e.target.value;
+        if (q.trim().length < 2) {
+            suggestionsList.innerHTML = '';
+            suggestionsList.classList.add('hidden');
+            return;
+        }
+
+        try {
+            const u = new URL('/api/places/autosuggest', window.location.origin);
+            u.searchParams.set('q', q);
+            u.searchParams.set('in', 'countryCode:GBR');
+            const r = await fetch(u.toString());
+            if (!r.ok) throw new Error(`Autosuggest failed ${r.status}`);
+            const data = await r.json();
+
+            currentItems = data.items || [];
+            suggestionsList.innerHTML = '';
+            currentItems.forEach((item, idx) => {
+                const li = document.createElement('li');
+                li.className = 'cursor-pointer rounded-lg px-3 py-2';
+                li.innerHTML = `<div class="text-sm font-medium">${item.title}</div><div class="text-xs opacity-70">${item.address?.label || ''}</div>`;
+                li.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    resolveSelection(item);
+                });
+                li.addEventListener('mouseenter', () => {
+                    activeIndex = idx;
+                    updateActiveSuggestion();
+                });
+                suggestionsList.appendChild(li);
+            });
+            suggestionsList.classList.toggle('hidden', currentItems.length === 0);
+            activeIndex = -1;
+        } catch (e) {
+            console.error(e);
+            suggestionsList.classList.add('hidden');
+        }
+    };
+
+    const resolveSelection = async (item) => {
+        if (!item) return;
+
+        let finalPosition;
+        let finalLabel = item.title;
+
+        if (item.position) {
+            finalPosition = item.position;
+            finalLabel = item.address?.label || item.title;
+        } else if (item.id) {
+            try {
+                const u = new URL('/api/places/lookup', window.location.origin);
+                u.searchParams.set('id', item.id);
+                const r = await fetch(u.toString());
+                if (!r.ok) throw new Error(`Lookup failed ${r.status}`);
+                const data = await r.json();
+                finalPosition = data.position;
+                finalLabel = data.address?.label || data.title;
+            } catch (e) { console.error(e); }
+        }
+
+        if (finalPosition) {
+            input.value = finalLabel; // Update input with the full address
+            // Here you could store lat/lng in hidden fields if needed
+        }
+        suggestionsList.innerHTML = '';
+        suggestionsList.classList.add('hidden');
+    };
+
+    const updateActiveSuggestion = () => {
+        [...suggestionsList.children].forEach((li, idx) => {
+            li.classList.toggle('bg-gray-100', idx === activeIndex);
+        });
+    };
+
+    input.addEventListener('input', debounce(onInputChange, 250));
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (activeIndex < currentItems.length - 1) {
+                activeIndex++;
+                updateActiveSuggestion();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (activeIndex > 0) {
+                activeIndex--;
+                updateActiveSuggestion();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex > -1 && currentItems[activeIndex]) {
+                resolveSelection(currentItems[activeIndex]);
+            }
+        } else if (e.key === 'Escape') {
+            suggestionsList.innerHTML = '';
+            suggestionsList.classList.add('hidden');
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target)) {
+            suggestionsList.classList.add('hidden');
+        }
+    });
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
   document.getElementById('apply').addEventListener('click', loadListings);
@@ -308,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('save-profile-btn').addEventListener('click', saveProfile);
 
+  setupLocationAutocomplete();
   fetchProfiles();
   loadListings();
 });

@@ -52,6 +52,8 @@ def api_delete_profile(pid: int):
     delete_profile(pid)
     return {"ok": True}
 
+import requests
+
 # Listings API
 @app.get("/api/listings")
 def api_list_listings(
@@ -61,6 +63,66 @@ def api_list_listings(
     security_min: int | None = None
 ):
     return list_listings(min_score=min_score, profile=profile, status=status, security_min=security_min)
+
+# HERE Places API Proxies
+@app.get("/api/places/autosuggest")
+def proxy_places_autosuggest(request: Request):
+    if os.getenv("USE_FIXTURE") == "1":
+        return {
+            "items": [
+                { "id": "here:af:street:123", "title": "10 Downing Street", "address": { "label": "10 Downing St, London SW1A 2AA, UK" }, "position": { "lat": 51.5034, "lng": -0.1276 } },
+                { "id": "here:af:postal:SW1A1AA", "title": "SW1A 1AA", "address": { "label": "SW1A 1AA, London, UK" }, "position": { "lat": 51.5010, "lng": -0.1416 } },
+            ]
+        }
+
+    params = dict(request.query_params)
+    if not params.get("q"):
+        raise HTTPException(400, "Missing q")
+
+    url = "https://autosuggest.search.hereapi.com/v1/autosuggest"
+    params["apiKey"] = os.getenv("HERE_API_KEY")
+
+    try:
+        r = requests.get(url, params=params, timeout=5)
+        if not r.ok:
+            raise HTTPException(r.status_code, r.text or "HERE API error")
+        return r.json()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/api/places/geocode")
+def proxy_places_geocode(request: Request):
+    params = dict(request.query_params)
+    if not params.get("q"):
+        raise HTTPException(400, "Missing q")
+
+    url = "https://geocode.search.hereapi.com/v1/geocode"
+    params["apiKey"] = os.getenv("HERE_API_KEY")
+
+    try:
+        r = requests.get(url, params=params, timeout=7)
+        if not r.ok:
+            raise HTTPException(r.status_code, r.text or "HERE API error")
+        return r.json()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+@app.get("/api/places/lookup")
+def proxy_places_lookup(request: Request):
+    params = dict(request.query_params)
+    if not params.get("id"):
+        raise HTTPException(400, "Missing id")
+
+    url = "https://lookup.search.hereapi.com/v1/lookup"
+    params["apiKey"] = os.getenv("HERE_API_KEY")
+
+    try:
+        r = requests.get(url, params=params, timeout=5)
+        if not r.ok:
+            raise HTTPException(r.status_code, r.text or "HERE API error")
+        return r.json()
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 # Per-item page
 DETAIL_TEMPLATE = """<!doctype html>
