@@ -80,7 +80,9 @@ def proxy_places_autosuggest(request: Request):
         raise HTTPException(400, "Missing q")
 
     url = "https://autosuggest.search.hereapi.com/v1/autosuggest"
-    headers = {"Authorization": f"Bearer {os.getenv('HERE_API_KEY')}"}
+    api_key = os.getenv("HERE_API_KEY")
+    print(f"--- AUTOSUGGEST: USING API KEY: {api_key[:5]}...{api_key[-5:] if api_key else 'None'}")
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
         r = requests.get(url, params=params, headers=headers, timeout=5)
@@ -97,7 +99,9 @@ def proxy_places_geocode(request: Request):
         raise HTTPException(400, "Missing q")
 
     url = "https://geocode.search.hereapi.com/v1/geocode"
-    headers = {"Authorization": f"Bearer {os.getenv('HERE_API_KEY')}"}
+    api_key = os.getenv("HERE_API_KEY")
+    print(f"--- GEOCODE: USING API KEY: {api_key[:5]}...{api_key[-5:] if api_key else 'None'}")
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
         r = requests.get(url, params=params, headers=headers, timeout=7)
@@ -114,7 +118,9 @@ def proxy_places_lookup(request: Request):
         raise HTTPException(400, "Missing id")
 
     url = "https://lookup.search.hereapi.com/v1/lookup"
-    headers = {"Authorization": f"Bearer {os.getenv('HERE_API_KEY')}"}
+    api_key = os.getenv("HERE_API_KEY")
+    print(f"--- LOOKUP: USING API KEY: {api_key[:5]}...{api_key[-5:] if api_key else 'None'}")
+    headers = {"Authorization": f"Bearer {api_key}"}
 
     try:
         r = requests.get(url, params=params, headers=headers, timeout=5)
