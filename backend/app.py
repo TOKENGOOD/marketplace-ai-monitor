@@ -80,10 +80,10 @@ def proxy_places_autosuggest(request: Request):
         raise HTTPException(400, "Missing q")
 
     url = "https://autosuggest.search.hereapi.com/v1/autosuggest"
-    params["apiKey"] = os.getenv("HERE_API_KEY")
+    headers = {"Authorization": f"Bearer {os.getenv('HERE_API_KEY')}"}
 
     try:
-        r = requests.get(url, params=params, timeout=5)
+        r = requests.get(url, params=params, headers=headers, timeout=5)
         if not r.ok:
             raise HTTPException(r.status_code, r.text or "HERE API error")
         return r.json()
@@ -97,10 +97,10 @@ def proxy_places_geocode(request: Request):
         raise HTTPException(400, "Missing q")
 
     url = "https://geocode.search.hereapi.com/v1/geocode"
-    params["apiKey"] = os.getenv("HERE_API_KEY")
+    headers = {"Authorization": f"Bearer {os.getenv('HERE_API_KEY')}"}
 
     try:
-        r = requests.get(url, params=params, timeout=7)
+        r = requests.get(url, params=params, headers=headers, timeout=7)
         if not r.ok:
             raise HTTPException(r.status_code, r.text or "HERE API error")
         return r.json()
@@ -114,10 +114,10 @@ def proxy_places_lookup(request: Request):
         raise HTTPException(400, "Missing id")
 
     url = "https://lookup.search.hereapi.com/v1/lookup"
-    params["apiKey"] = os.getenv("HERE_API_KEY")
+    headers = {"Authorization": f"Bearer {os.getenv('HERE_API_KEY')}"}
 
     try:
-        r = requests.get(url, params=params, timeout=5)
+        r = requests.get(url, params=params, headers=headers, timeout=5)
         if not r.ok:
             raise HTTPException(r.status_code, r.text or "HERE API error")
         return r.json()
