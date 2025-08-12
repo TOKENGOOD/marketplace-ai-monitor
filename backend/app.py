@@ -26,6 +26,10 @@ def api_list_profiles():
 @app.post("/api/profiles")
 async def api_create_profile(request: Request):
     data = await request.json()
+    print("--- RECEIVED DATA ---")
+    import json
+    print(json.dumps(data, indent=2))
+    print("---------------------")
     if not data.get("name"):
         raise HTTPException(400, "name is required")
     pid = create_profile(data)
