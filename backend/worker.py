@@ -46,7 +46,7 @@ def main():
                 # Include link to item page on our site + direct FB link
                 site_link = f"{BASE_URL}/item/{item_id}" if item_id else BASE_URL
                 suffix = f"[{badge_text(sec)} — {sec}/100]"
-                result = send_item(it | {"url": it.get("url")}, profile)
+                result = send_item(it, profile, site_link=site_link, reason=suffix)
                 # Our notify function does not include the site_link; send second line as reason
                 if result is True:
                     print(f"  Sent: {it['title']} {score:.2f} — {sec}/100")
